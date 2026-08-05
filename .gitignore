@@ -1,3 +1,26 @@
+# Released layout:
+#   airdbm_core.py, airdbm_service.py, pyproject.toml, airfoilDB/, bin/  -- the API
+#   bench/problems.py, bench/run.py, bench/gate.json                      -- run the problems
+#   bench/README.md, bench/DATA.md                                       -- how to run, what data is
+#   bench/data/                                                          -- released histories
+# Everything else is working material and stays local.
+
+dev/
+test/
+manuscript/
+slurm_logs/
+
+# Benchmark post-processing and verification tooling, plus its derived products (figures, LaTeX
+# tables, cost/scaling/robustness summaries). Working material: the released surface is bench/*.py,
+# bench/*.md, bench/gate.json and bench/data.
+bench/_local/
+
+# Internal drafting and superseded work
+.academic-drafting/
+paper/
+paper_software/
+.verify_tmp/
+
 .venv/
 __pycache__/
 *.pyc
@@ -5,26 +28,41 @@ __pycache__/
 *.pyd
 .pytest_cache/
 .mypy_cache/
+dist/
+build/
+build_temp/
+*.egg-info/
 
-# Large binaries to be built
+# Large binaries, built by the recipes in bin/
 bin/xfoil-ubuntu22.sif
 airfoilDB/_db.pkl
 airfoilDB/_db.*.pkl.tmp
 
-# OS/editor specific files
+# Transient run state: in-progress evaluation logs and checkpointed search state. Neither is
+# part of the release; run.py removes them once a run reaches its budget.
+bench/data/**/*.partial.csv
+bench/data/**/*.ckpt
+bench/data/**/*.tmp
+
+# Histories ship gzip-compressed
+bench/data/**/*.csv
+!bench/data/**/*.csv.gz
+bench/data/**/slurm_logs/
+# Sidecars of the reference-front refinement stage: the frozen level grid and its provenance.
+# Working state, not released data -- the fronts they produced ship inside mo_summary.json.
+bench/data/**/_trace*.json
+bench/data/**/_frontfill*.json
+# Marker left by a resume pass for a run whose curve came up short.
+bench/data/**/*.short
+
+# Scheduler submission scripts. These are specific to one HPC allocation (account, partition, walltime
+# and core counts) and are of no use to anyone else, so nothing scheduler-bound is published: the
+# released surface is the plain Python entry points, which run anywhere.
+*.sbatch
+bench/*.sh
+slurm_logs/
+
 .DS_Store
 .vscode/
-
-# Build and packaging directories
-build_wheel.py
-dist/
-
-# Academic drafting / manuscript / benchmark material (not part of the API release)
-.academic-drafting/
-paper/
-paper_software/
-test/am_moo/
-test/benchmark/
-test/academic_style.py
-test/plot_*.py
-.verify_tmp/
+.claude/
+*.swp
