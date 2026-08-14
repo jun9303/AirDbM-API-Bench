@@ -10,6 +10,15 @@ test/
 manuscript/
 slurm_logs/
 
+# Local build/QA products and provenance records. None of this is part of the release: compiled
+# manuscript PDFs and staged submission bundles, the review-evidence archive, literature PDFs kept
+# for drafting, scratch space, and the external code-index symlink.
+output/
+.omo/
+references/
+tmp/
+.codegraph
+
 # Benchmark post-processing and verification tooling, plus its derived products (figures, LaTeX
 # tables, cost/scaling/robustness summaries). Working material: the released surface is bench/*.py,
 # bench/*.md, bench/gate.json and bench/data.
@@ -44,23 +53,18 @@ bench/data/**/*.partial.csv
 bench/data/**/*.ckpt
 bench/data/**/*.tmp
 
-# Histories ship gzip-compressed
+# Histories and reference-stage evaluations both ship gzip-compressed. The `_`-prefixed files are the
+# epsilon-constraint sweeps that improved each reference front beyond the compared panel; releasing
+# them is what lets bench/score.py rederive every published front from tracked files alone.
 bench/data/**/*.csv
 !bench/data/**/*.csv.gz
 bench/data/**/slurm_logs/
-# Sidecars of the reference-front refinement stage: the frozen level grid and its provenance.
-# Working state, not released data -- the fronts they produced ship inside mo_summary.json.
-bench/data/**/_trace*.json
-bench/data/**/_frontfill*.json
-# Marker left by a resume pass for a run whose curve came up short.
-bench/data/**/*.short
 
 # Scheduler submission scripts. These are specific to one HPC allocation (account, partition, walltime
 # and core counts) and are of no use to anyone else, so nothing scheduler-bound is published: the
 # released surface is the plain Python entry points, which run anywhere.
 *.sbatch
 bench/*.sh
-slurm_logs/
 
 .DS_Store
 .vscode/

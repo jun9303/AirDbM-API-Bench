@@ -21,6 +21,10 @@ MO_BUDGET = {4: 4096, 8: 8192, 12: 12288}
 SEEDS = (0, 1, 2, 3, 4)
 SMOKE_SEED = 99
 HV_REF = np.array([0.0, 0.0])
+# Degenerate-design guard. A vector whose entries sum below this has no well-defined L1 normalization,
+# so it never reaches the solver and keeps the objective floor. The threshold must stay ABOVE the
+# 1e-8 that airdbm_core's ABS_SUM branch raises ValueError on, so the benchmark floors such a design
+# rather than letting an exception escape mid-run.
 MIN_W = 1e-6
 
 # STABILITY GATE -- a frozen part of the problem definition, not a property of a run.
@@ -28,14 +32,22 @@ MIN_W = 1e-6
 # An objective value that no neighbor of the design reproduces is unattainable by search and must not
 # stand (see verify.py). Screening every evaluation costs 4 extra evaluations each; screening whatever
 # a run happens to hold in its archive would make the objective depend on the run. The gate instead
-# fires on a CONSTANT -- a candidate the published reference solution set does not dominate -- so the
-# same design is screened identically in every run, in any order, by any method.
+# fires on a CONSTANT -- a candidate the frozen screening set does not dominate -- so the same design
+# is screened identically in every run, in any order, by any method.
 #
-# The gate fires when the published reference solution set does not dominate a candidate: for m=1 when
-# the value exceeds the published best, for m=2 when no published front point dominates (y1, y2). The set
-# is frozen in gate.json, so the same design is screened identically in every run, in any order, by any
-# method. Measured on the released campaign it fires on 0.23% of bi-objective evaluations, about 57
-# core-hours of probes, and covers every design the end-of-study screen removed.
+# WHICH SET. The screening set lives in gate.json and is NOT the reference published in
+# mo_summary.json. For m=1 the two coincide: gate.json's so_best equals so_summary.json's y_ref on all
+# six problems. For m=2 they deliberately differ. gate.json's mo_front freezes the end-of-study screen
+# of the panel pool, taken BEFORE the reference-front refinement stage, and it is therefore the weaker
+# of the two: 42 points reaching Cl/Cd 269.30 on ADO-M-4-2, against 89 points reaching 272.47 on the
+# published front. Gating against the published front instead would arm far more rarely and would make
+# the problem definition depend on a target that later search can still improve. Anyone reimplementing
+# screen() must load gate.json, not mo_summary.json.
+#
+# The gate fires when that frozen set does not dominate a candidate: for m=1 when the value exceeds the
+# frozen best, for m=2 when no frozen front point dominates (y1, y2). Measured on the released campaign
+# it fires on 0.23% of bi-objective evaluations (2837 of 1228800), about 57 core-hours of probes, and
+# covers every design the end-of-study screen removed.
 #
 # A frozen set cannot gate the campaign that produced it. The released runs were screened after the fact
 # by verify.py, and gate.json freezes that outcome so every later study is gated against one published
@@ -160,7 +172,7 @@ def screen(X, Y, s, max_workers=None, eps=1e-6, n_dir=4, rel_tol=0.02, on=True,
                 Y[i, :] = 0.0
                 floored.append(int(i))
                 if verbose:
-                    print(f"    gate({version}): floored an unstable candidate "
+                    print(f"    gate({s['pid']}): floored an unstable candidate "
                           f"({r['objectives']}), median neighbor {r['median_neighbor']}", flush=True)
     return (Y if s["m"] == 2 else Y[:, 0]), floored
 
