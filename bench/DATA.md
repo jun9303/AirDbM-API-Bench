@@ -1,8 +1,9 @@
 # AirDbM-Bench released data
 
 Everything under `bench/data/` is the released benchmark: the complete per-evaluation history of every
-optimizer run, plus two summary files and a problem manifest. No XFOIL and no part of this repository is
-needed to read it — the histories are plain CSV.
+optimizer run, the reference-stage evaluations behind every target, two summary files, a problem
+manifest, and the stability and cost records. No XFOIL and no part of this repository is needed to read
+it — the histories are plain CSV.
 
 ```
 bench/data/
@@ -21,6 +22,7 @@ bench/data/
   mo_summary.json              bi-objective reference fronts and per-method statistics
   manifest.json                problem catalogue; also served by the HTTP API
   robustness.json              stability screen: parameters, verdicts and the exclusion list
+  cost.json                    wall-clock core-hours per run, and the campaign total
 ```
 
 ## Problem identifiers and directory names
@@ -165,6 +167,13 @@ summaries are built. In v0.3.0 exactly one value is excluded, on `ADO-M-2-3`.
 
 The histories themselves are untouched, so the screen is a view you can apply or ignore.
 `bench/score.py` applies it, which is why its rederived fronts match the published ones exactly.
+
+## Cost
+
+`cost.json` records the core-hours each of the 300 runs consumed and the campaign total, 15,705
+core-hours over 2,457,599 evaluations, i.e. about 23 s per live evaluation on one core. That figure is
+the reason the suite is posed against XFOIL: slow enough that an optimizer has to spend its budget
+carefully, cheap enough that a campaign of this size is affordable and repeatable.
 
 ## Reproducing the published numbers
 
