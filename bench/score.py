@@ -13,8 +13,8 @@ with this benchmark:
 
 ``hv_ref_norm`` and ``frac_of_reference_hv``
     Dominated hypervolume after each objective is divided by the reference front's own maximum, with
-    the reference point at ``REF_OFFSET`` beyond the normalized nadir. This is the scored quantity,
-    and it is what ``norm_hv`` below computes.
+    the reference point at ``REF_OFFSET`` below the normalized objective floor. This is the scored
+    quantity, and it is what ``norm_hv`` below computes.
 
 Range normalization is not cosmetic. Peak efficiency runs to a few hundred while stall margin runs to
 a few tens of degrees, so an origin-referenced hypervolume on raw values would fix an arbitrary
@@ -36,11 +36,9 @@ DATA = Path(__file__).resolve().parent / "data"
 SO_METHODS = ("cmaes", "de", "ga", "pso", "sobol")
 MO_METHODS = ("nsga2", "smsemoa", "moead", "optuna", "sobol")
 
-# Offset of the hypervolume reference point beyond the normalized nadir, in units of the per-problem
-# normalizer. Fixed for the release. Placing the reference point slightly worse than the nadir is the
-# customary EMO convention; it is not universally appropriate for every front geometry, but every
-# method on a problem is scored against the same point, so a within-problem comparison does not
-# depend on the value.
+# Offset of the hypervolume reference point below the normalized objective floor, in units of the
+# per-problem normalizer. This is a fixed, versioned scoring choice; hypervolume values and method
+# orderings can depend on it even when every method is scored against the same point.
 REF_OFFSET = 0.05
 
 
@@ -97,9 +95,9 @@ def norm_hv(Y, z, ref_offset=REF_OFFSET):
     ``hv_ref_norm`` and every ``frac_of_reference_hv``.
     """
     Y = np.atleast_2d(np.asarray(Y, dtype=float))[:, :2] / z
-    # The reference point sits ref_offset BELOW the origin of the normalized objectives, i.e. 5% worse
-    # than the worst attainable value, since a floored evaluation scores 0 and the normalized nadir is
-    # therefore the origin. Every dominated box is widened by the same constant margin on both axes.
+    # The reference point sits ref_offset BELOW the origin of the normalized objectives, i.e. 5% below
+    # the objective floor. The origin is not the Pareto-front nadir. Every dominated box is widened by
+    # the same constant margin on both axes.
     return hv2d(Y, ref=(-ref_offset, -ref_offset))
 
 
@@ -221,10 +219,11 @@ def verify_fronts(tol=1e-9):
     return ok
 
 
-def verify(tol=5e-4):
+def verify(tol=1e-9):
     """Recompute every released attainment fraction and report the largest disagreement."""
     per = {1: json.load(open(DATA / "so_summary.json"))["per_problem"],
            2: json.load(open(DATA / "mo_summary.json"))["per_problem"]}
+    ex = excluded_values()
     worst, n, bad = 0.0, 0, 0
     for m in (1, 2):
         for pid, e in per[m].items():
@@ -236,6 +235,7 @@ def verify(tol=5e-4):
                 for f in histories(d, meth):
                     a = np.atleast_2d(np.loadtxt(f, delimiter=",", skiprows=1))
                     Y = a[:, D:D + m]
+                    Y = _drop_excluded(Y, e["mach"], e["reynolds"], ex)
                     got.append(score_so_run(Y[:, 0], e["y_ref"]) if m == 1
                                else score_mo_run(Y, front, e["hv_ref_norm"]))
                 if not got:
