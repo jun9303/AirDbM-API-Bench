@@ -35,7 +35,7 @@ except ImportError:
     Polygon = None
     print("Warning: Shapely library not available. Geometry correction will be bypassed.")
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 # =============================================================================
 # CONSTANTS & CONFIGURATION

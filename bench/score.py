@@ -155,7 +155,7 @@ def excluded_values():
     A value that no neighbor of its design reproduces is isolated: search cannot reach it and it
     cannot serve as a reference, so it is scored at the failure floor. The raw histories are left
     untouched and this list ships beside them, so either view can be reconstructed. It holds a single
-    point in v0.3.0.
+    point in this release.
     """
     f = DATA / "robustness.json"
     if not f.is_file():

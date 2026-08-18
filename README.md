@@ -458,6 +458,19 @@ Total design candidates: `384` (the same set at every worker count).
 
 ## Changelog
 
+### v0.3.1
+
+- **`bench/score.py` now applies the stability exclusion when scoring runs, not only when building the
+  reference fronts.** The two halves of the verification previously disagreed by `1.03e-05` on
+  `ADO-M-2-2` NSGA-II, under a `5e-4` tolerance that hid it. The exclusion is keyed by operating
+  condition, so it reaches every run at `Ma 0.20` / `Re_c 1e6`, not only the `ADO-M-2-3` run it came
+  from. The verification tolerance is now `1e-9`, and all six fronts and all sixty method-problem pairs
+  reproduce with a largest disagreement of `2.22e-16`.
+- Corrected the scorer's description of the hypervolume reference point: it sits below the normalized
+  objective floor, not beyond the Pareto-front nadir, and a shared reference point does not make a
+  within-problem comparison independent of `REF_OFFSET`. `REF_OFFSET` is unchanged at `0.05` and no
+  released number changes.
+
 ### v0.3.0
 
 - **Released AirDbM-Bench, the optimization benchmark built on this evaluator.** Twelve frozen airfoil

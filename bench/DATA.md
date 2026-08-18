@@ -163,7 +163,7 @@ part of how the target is built.
 `robustness.json` holds the screen's parameters, its per-candidate verdicts, and the values it excluded.
 An objective value that no neighbour of its design reproduces under a small perturbation is isolated:
 search cannot reach it and it cannot serve as a reference, so it is scored at the failure floor when the
-summaries are built. In v0.3.0 exactly one value is excluded, on `ADO-M-2-3`.
+summaries are built. In this release exactly one value is excluded, on `ADO-M-2-3`.
 
 The histories themselves are untouched, so the screen is a view you can apply or ignore.
 `bench/score.py` applies it, which is why its rederived fronts match the published ones exactly.
