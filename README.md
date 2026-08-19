@@ -412,62 +412,45 @@ args = {
 }
 ~~~
 
-## Parallel Scaling
+## Parallel Scaling Test
 
-Parallel performance was measured with `m=2` across worker counts on one 128-core dual-socket node.
-Weak scaling holds 24 candidates per worker, drawing each load as a nested prefix of one fixed design
-pool, which keeps the workload composition identical at every point. Strong scaling evaluates the same
-384 candidates throughout. Scaling is near-ideal through 32 workers and reaches about `80.9x` speedup at
-128, where per-design cost begins to rise.
+The parallel airfoil design and evaluation performance of `TestAirfoils` was measured by evaluating a fixed pool of design candidates across worker counts on a single node.
+
+### Computing Environment
+
+- Node type: Two 64-core AMD EPYC Milan processors @ 2.45 GHz (128 cores in total)
+- Objective mode: `m=2` (multi-objective)
+- Worker counts tested: `1` (serial), `2, 4, 8, 16, 32, 64, 128`
 
 <!-- SCALING:BEGIN (regenerated from the recorded scaling measurements; do not edit by hand) -->
 
-| workers | weak: sec/design | weak: eval/sec | strong: time (sec) | strong: speedup | strong: efficiency |
-|---:|---:|---:|---:|---:|---:|
-| 1 | 12.998 | 0.08 | 4921.202 | 1.00 | 1.000 |
-| 2 | 13.284 | 0.15 | 2465.182 | 2.00 | 0.998 |
-| 4 | 13.530 | 0.30 | 1240.874 | 3.97 | 0.991 |
-| 8 | 13.328 | 0.60 | 626.653 | 7.85 | 0.982 |
-| 16 | 13.082 | 1.22 | 320.502 | 15.35 | 0.960 |
-| 32 | 13.169 | 2.43 | 165.232 | 29.78 | 0.931 |
-| 64 | 13.829 | 4.63 | 91.000 | 54.08 | 0.845 |
-| 128 | 17.139 | 7.47 | 60.819 | 80.92 | 0.632 |
+### Weak Scaling
+
+Design candidates per worker: `24`. Every worker count draws its load as a nested prefix of one fixed i.i.d. design pool, so the workload composition is identical at every point and the expected time is flat.
+
+| workers | candidates | time (sec) | sec/design | throughput (eval/sec) |
+|---:|---:|---:|---:|---:|
+| 1 | 24 | 311.950 | 12.998 | 0.08 |
+| 2 | 48 | 318.825 | 13.284 | 0.15 |
+| 4 | 96 | 324.722 | 13.530 | 0.30 |
+| 8 | 192 | 319.867 | 13.328 | 0.60 |
+| 16 | 384 | 313.963 | 13.082 | 1.22 |
+| 32 | 768 | 316.052 | 13.169 | 2.43 |
+| 64 | 1536 | 331.886 | 13.829 | 4.63 |
+| 128 | 3072 | 411.335 | 17.139 | 7.47 |
+
+### Strong Scaling
+
+Total design candidates: `384` (the same set at every worker count).
+
+| workers | candidates | time (sec) | speedup | efficiency |
+|---:|---:|---:|---:|---:|
+| 1 | 384 | 4921.202 | 1.00 | 1.000 |
+| 2 | 384 | 2465.182 | 2.00 | 0.998 |
+| 4 | 384 | 1240.874 | 3.97 | 0.991 |
+| 8 | 384 | 626.653 | 7.85 | 0.982 |
+| 16 | 384 | 320.502 | 15.35 | 0.960 |
+| 32 | 384 | 165.232 | 29.78 | 0.931 |
+| 64 | 384 | 91.000 | 54.08 | 0.845 |
+| 128 | 384 | 60.819 | 80.92 | 0.632 |
 <!-- SCALING:END -->
-
-## Changelog
-
-### v0.3.1
-
-- **`bench/score.py` applies the stability exclusion when scoring runs, not only when building the
-  reference fronts.** The two halves of the verification previously disagreed by `1.03e-05` on
-  `ADO-M-2-2` NSGA-II under a tolerance that hid it. The tolerance is now `1e-9`, and all six fronts and
-  all sixty method-problem pairs reproduce to `2.22e-16`. `REF_OFFSET` is unchanged at `0.05`, and no
-  released number changes.
-- Documentation corrections, with no change to the evaluator or to any released number: the HTTP
-  service's morphing defaults are stated where they apply; the worked optimizer example scores every
-  evaluation rather than the surviving population; the `VerifyDesigns` cost is `1 + 2D` at its default
-  setting; `apptainer_image` and `repanel_n` are documented; the smoothed peak selection, the one-sided
-  `Cl/Cd` clip and the wrapper-applied objective floor are described; the airfoil-database caching rules
-  are recorded; and `bench/DATA.md` names the summary `stats` fields and their two deviation conventions.
-
-### v0.3.0
-
-- **Released AirDbM-Bench**, twelve frozen problems with reference solutions and the complete history of
-  all 300 optimizer runs, i.e. 2.46 million XFOIL evaluations as gzipped CSV.
-- **Added the JSON/HTTP service** (`airdbm_service.py`), with named condition presets and `/v1/benchmark`
-  endpoints serving the twelve problems.
-- **Added the stability screen** that decides which values may define a reference, exposed as
-  `airdbm_core.VerifyDesigns`; reference fronts are best-known rather than proven optimal.
-- Documented parallel scaling on 128 cores.
-
-### v0.2.1
-
-- **Fixed the parallel `pickle data was truncated` failure** with the full 12-baseline set: the airfoil
-  database cache is now written atomically, and a partial cache is rebuilt rather than raising.
-- **Guaranteed a non-negative stall margin**, enforced at the objective boundary as well as the
-  computation site, and exposed `airdbm_core.__version__`.
-
-### v0.2.0
-
-- Baseline release: parallelized Design-by-Morphing generation with dynamic XFOIL evaluation
-  (`Cl/Cd_max` and stall-margin objectives) and Apptainer/native backends.
