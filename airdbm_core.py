@@ -1542,8 +1542,9 @@ def VerifyDesigns(
     such an objective into a pass/fail rule rejects the extremes an optimizer is supposed to find.
     Deviations for every objective are reported either way, so a caller can characterize the rest.
 
-    This check is deliberately NOT part of TestAirfoils: it costs (1 + n_dir) evaluations per
-    design, so running it inside the objective would multiply the cost of an optimization run.
+    This check is deliberately NOT part of TestAirfoils: at the default directions='axes' it costs
+    (1 + 2D) evaluations per design, and (1 + n_dir) under directions='random', so running it inside
+    the objective would multiply the cost of an optimization run.
     It is meant for the O(front size) candidate reference set at the END of a study -- a fraction
     of a percent of a campaign's budget -- rather than for the O(budget) hot path.
 

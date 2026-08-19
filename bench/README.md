@@ -1,29 +1,31 @@
 # AirDbM ADO benchmark
 
-Twelve problems: `ADO-{S,M}-{2,4}-{1,2,3}` — single/bi-objective, condition (Ma 0.20 / Re_c 1e6, Ma 0.40
-/ Re_c 1e7), dimension (D = 4, 8, 12). Five seeds each. Budget is `1024 x D` evaluations for every
-method: 4096 / 8192 / 12288 at D = 4 / 8 / 12.
+Twelve problems, `ADO-{S,M}-{2,4}-{1,2,3}`, spanning objective form (single/bi-objective), condition
+(Ma 0.20 / Re_c 1e6 and Ma 0.40 / Re_c 1e7) and dimension (D = 4, 8, 12), with five seeds each. The budget
+is `1024 x D` evaluations for every method, i.e. 4096 / 8192 / 12288 at D = 4 / 8 / 12.
 
 | file | purpose |
 |---|---|
 | `problems.py` | problem specs, frozen evaluation arguments, objective helpers |
 | `run.py` | run one (problem, method, seed) and write its evaluation history |
+| `score.py` | rederive the reference fronts and the published attainment fractions |
 | `gate.json` | the frozen reference set that arms the in-loop stability gate |
 | `DATA.md` | layout and schema of everything under `data/` |
 | `data/` | released evaluation histories, the two summaries, the problem manifest |
 
-Reading the released data needs none of the above and no XFOIL: the histories are plain gzipped CSV and
+Reading the released data needs none of the above and no XFOIL: the histories are plain gzipped CSV, and
 `DATA.md` documents the schema.
 
-The scripts that post-process a campaign — references and statistics, figures and LaTeX tables, parallel
-scaling, core-hour accounting, the end-of-study stability screen, reference-front refinement — are working
+The scripts that post-process a campaign (references and statistics, figures and LaTeX tables, parallel
+scaling, core-hour accounting, the end-of-study stability screen, reference-front refinement) are working
 material rather than part of the benchmark, and are not published. The released surface is the problem
-definitions, the runner, the frozen gate constant and the data.
+definitions, the runner, the scorer, the frozen gate constant and the data.
 
 ## Optimizers
 
 Five per objective form. Every setting is the value its primary source specifies; where the implementing
-library's default differs, the source wins.
+library's default differs, the source wins. None of the seven population methods is implemented here:
+they are run through pymoo, while Sobol comes from SciPy's QMC module and TPE from Optuna.
 
 | method | key settings | source |
 |---|---|---|
@@ -40,8 +42,8 @@ library's default differs, the source wins.
 Uniform random sampling is not carried as a separate baseline: preliminary runs, not part of this release,
 showed no separation from scrambled Sobol, which is the better-distributed of the two.
 
-No configuration is tuned to these problems. A user tuning an optimizer against a specific problem should
-expect to beat these numbers.
+No configuration is tuned to these problems, and a user tuning an optimizer against a specific problem
+should therefore expect to beat these numbers.
 
 ## Reproduce
 
@@ -51,8 +53,8 @@ One run:
 python bench/run.py --problem ADO-S-2-1 --method cmaes --seed 0 --max-workers 32
 ```
 
-The full campaign is 300 runs: 12 problems x 5 optimizers x 5 seeds. Each is independent, so they can be
-driven in any order by any scheduler or shell loop — one process per run:
+The full campaign is 300 runs, i.e. 12 problems x 5 optimizers x 5 seeds. Each is independent and they can
+therefore be driven in any order, one process per run:
 
 ```bash
 for prob in ADO-S-2-1 ADO-S-2-2 ADO-S-2-3 ADO-S-4-1 ADO-S-4-2 ADO-S-4-3; do
@@ -65,46 +67,44 @@ done
 ```
 
 Substitute the bi-objective problems (`ADO-M-...`) and their optimizers (`nsga2 smsemoa moead optuna sobol`)
-for the other half. Size each allocation to the optimizer's batch width so a narrow-batch method is not
-billed for idle cores: roughly 32 cores for GA, DE, NSGA-II and Sobol, 26 for PSO, 12 for CMA-ES, 8 for
-Optuna, and 2 for the steady-state SMS-EMOA and MOEA/D, which evaluate one candidate at a time and
-therefore need the longest walltime.
+for the other half. Set `--max-workers` to the optimizer's batch width, since a narrower batch leaves
+additional workers idle: roughly 32 for GA, DE, NSGA-II and Sobol, 26 for PSO, 12 for CMA-ES, 8 for Optuna,
+and 2 for the steady-state SMS-EMOA and MOEA/D, which evaluate one candidate at a time and therefore take
+the longest.
 
-XFOIL must run on a compute node, never on a login node.
-
-`run.py` appends every evaluation to `<method>_seed<k>.partial.csv` as it goes, so a run killed at the
-walltime limit still leaves a usable history; the partial is removed once the final file is written. It
-refuses to replace an existing history with a shorter one — use `--seed 99` to smoke-test, or `--force` to
-overwrite deliberately. Re-invoking with `--budget` equal to what a partial log already holds finalizes it
-on the spot, touching no solver.
+`run.py` appends every evaluation to `<method>_seed<k>.partial.csv` as it goes, and thus an interrupted run
+still leaves a usable history; the partial is removed once the final file is written. It refuses to replace
+an existing history with a shorter one. Use `--seed 99` to smoke-test, or `--force` to overwrite
+deliberately. Re-invoking with `--budget` equal to what a partial log already holds finalizes it on the
+spot, touching no solver.
 
 ## Stability of a solution
 
 XFOIL can settle on more than one boundary layer solution for two sections that are geometrically
-indistinguishable, so an isolated design vector can score far above every design around it. The value is
-reproducible but unattainable by search, and it is an artifact of the model rather than a property of the
-shape. Two mechanisms rule such values out, and both are part of the problem definition.
+indistinguishable, and an isolated design vector can therefore score far above every design around it. The
+value is reproducible yet unattainable by search, and it is an artifact of the model rather than a property
+of the shape. Two mechanisms rule such values out, and both are part of the problem definition.
 
-In-loop gate, on by default, switched off with `run.py --gate off`. A candidate that the published
-reference solution set does not dominate is perturbation-tested before its value is accepted, and a failure
-is scored at the floor. The set is frozen in `gate.json` — the single-objective bests and the
-bi-objective fronts of the first release — so the verdict is a function of the design vector alone: it does
-not depend on what a run has already seen, on batch composition, or on later regenerations of the
-summaries. Perturbation directions are likewise derived per design, from the bytes of its own coordinates.
-Measured on the released campaign the gate arms on 0.23% of bi-objective evaluations, about 57 core-hours
-of probes, and covers every design the end-of-study screen removed.
+**In-loop gate**, on by default and switched off with `run.py --gate off`. A candidate that the frozen
+reference set does not dominate is perturbation-tested before its value is accepted, and a failure is
+scored at the floor. The set is frozen in `gate.json`, which makes the verdict a function of the design
+vector alone: it does not depend on what a run has already seen, on batch composition, or on later
+regenerations of the summaries. Perturbation directions are likewise derived per design, from the bytes of
+its own coordinates. Measured on the released campaign, the gate arms on 0.23% of bi-objective evaluations
+and covers every design the end-of-study screen removed.
 
 A frozen set cannot gate the campaign that produced it: the released runs were screened after the fact by
-the end-of-study screen, and `gate.json` freezes that outcome so every later study is gated against one
-published constant. There is one gate protocol; the `v1` in the file name is the version of that frozen
-set and has nothing to do with the `/v1/` prefix of the HTTP API, which is a URL namespace.
+the end-of-study screen, and `gate.json` freezes that outcome so that every later study is gated against
+one published constant. That file's own `rule` and `derived_from` fields record the arming condition and
+how the set was built.
 
-End-of-study screen. Kept because it is what a study with no published front to
-gate against can do: it perturbation-tests every candidate reference solution and scores
-at the floor any design whose neighbours at radius `1e-6` disagree with it by more than 2% in an objective.
-The check costs `1 + n_dir` evaluations per candidate and applies only to the reference set, so it adds a
-fraction of a percent to a campaign and nothing to an optimization run. The same check is available from the
-interface as `airdbm_core.VerifyDesigns`.
+**End-of-study screen**, kept because it is what a study with no published front to gate against can do.
+It perturbation-tests every candidate reference solution and scores at the floor any design whose
+neighbours at radius `1e-6` disagree with it by more than 2% in an objective. At the default
+canonical-axes setting the check costs `1 + 2D` evaluations per candidate, i.e. 9, 17 and 25 at
+`D` = 4, 8 and 12, and it applies only to the reference set; it therefore adds a fraction of a percent to
+a campaign and nothing to an optimization run. The same check is available from the interface as
+`airdbm_core.VerifyDesigns`.
 
 ## Reference solutions
 
@@ -116,14 +116,14 @@ stall margin.
 
 That pool is then improved by additional evaluations spent on the front itself, outside the comparison: a
 scalarized search fixes a stall-margin level and maximizes efficiency subject to it, warm-started from the
-best design already known at that level so it cannot return less than the pool already holds. Levels are
-spread over the attainable margin range, with a few above the highest margin reached, so the extra
-evaluations land where the front is sparse rather than where a crowding operator would leave them. These
+best design already known at that level, and thus it cannot return less than the pool already holds. Levels
+are spread over the attainable margin range, with a few above the highest margin reached, which places the
+extra evaluations where the front is sparse rather than where a crowding operator would leave them. These
 evaluations are pooled into the reference and excluded from every per-method statistic.
 
 References are therefore best-known rather than proven optimal: every point is an attainable design that
 was evaluated, and further search can only add to the set. Report attainment as a fraction of the best
 known.
 
-The summaries in `data/` are derived from the histories beside them, so a user who prefers to recompute
-attainment from the raw CSVs can do so and should get the same numbers.
+The summaries in `data/` are derived from the histories beside them; a user who prefers to recompute
+attainment from the raw CSVs can do so with `score.py` and should get the same numbers.

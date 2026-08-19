@@ -1,6 +1,6 @@
 # AirDbM-API-Bench
 
-> <kbd> Aug 5, 2026 </kbd> <br> This is the native-Python **API** and **benchmark** release of the AirDbM design and evaluation scheme. The parent repository is [AirDbM](https://github.com/UCBCFD/AirDbM) — the MATLAB implementation accompanying the article that introduced the compact 12-baseline Design-by-Morphing set this package builds on.
+> <kbd> Aug 5, 2026 </kbd> <br> This is the native-Python **API** and **benchmark** release of the AirDbM design and evaluation scheme, reprocessed from the parent [AirDbM](https://github.com/UCBCFD/AirDbM) repository (the MATLAB implementation accompanying the article that introduced the compact 12-baseline Design-by-Morphing set) and adapted into a standalone Python workflow for robust batch evaluation.
 
 <div align="center">
   <kbd>
@@ -19,26 +19,19 @@ cl_cd_max, _ = results[0].objectives
 print(f"Cl/Cd max: {cl_cd_max:.2f}") # >>>>>>> Cl/Cd max: 54.98
 ~~~
 
-This repository provides a highly robust, parallelized Python interface for generating morphed airfoil geometries using Design-by-Morphing (DbM) and evaluating them dynamically via XFOIL. Two modules, each named for what it carries:
-
-| module | carries |
-|---|---|
-| `airdbm_core.py` | the engine: DbM geometry generation, Shapely geometry repair, containerized XFOIL evaluation, parallel batch evaluation |
-| `airdbm_service.py` | the JSON/HTTP service: FastAPI app, request/response schemas, benchmark argument presets, the `airdbm-serve` entry point |
-
-The benchmark ships alongside it in `bench/`:
+This repository provides a robust, parallelized Python interface for generating morphed airfoil
+geometries using Design-by-Morphing (DbM) and evaluating them dynamically via XFOIL. Two modules
+carry the interface, and the benchmark ships alongside them in `bench/`:
 
 | path | carries |
 |---|---|
+| `airdbm_core.py` | the engine: DbM geometry generation, Shapely geometry repair, containerized XFOIL evaluation, parallel batch evaluation |
+| `airdbm_service.py` | the JSON/HTTP service: FastAPI app, request/response schemas, benchmark argument presets, the `airdbm-serve` entry point |
 | `bench/problems.py` | the twelve problem specs and the frozen evaluation arguments |
 | `bench/run.py` | one (problem, method, seed) run; writes its evaluation history |
 | `bench/gate.json` | the frozen reference set that arms the in-loop stability gate |
-| `bench/data/` | released evaluation histories, the two summaries, the problem manifest |
+| `bench/data/` | released evaluation histories, the two summaries, the problem manifest, the stability and cost records |
 | `bench/DATA.md` | layout and schema of everything under `bench/data/` |
-
-
-
-This API is reprocessed from the original [AirDbM](https://github.com/UCBCFD/DbMAirfoilOpt) repository and adapted into a standalone Python workflow for robust batch evaluation.
 
 If this repository contributes to your research, publication, or benchmark, we kindly ask that you credit our work by citing our AirDbM research references:
 - Lee, S. & Sheikh, H. M. (2026). Airfoil Optimization using Design-by-Morphing with Minimized Design-Space Dimensionality. *Journal of Computational Design and Engineering*, 13(1), 108-124. [![DOI](https://img.shields.io/badge/DOI-10.1093%2Fjcde%2Fqwaf124-blue)](https://doi.org/10.1093/jcde/qwaf124)
@@ -46,17 +39,15 @@ If this repository contributes to your research, publication, or benchmark, we k
 
 ## Benchmark Database
 
-Beyond the API, this repository doubles as **AirDbM-Bench**, a real-world
-(physics-in-the-loop) optimization benchmark database: **12 frozen airfoil optimization
-problems** (single- and bi-objective; input dimension `D ∈ {4, 8, 12}`; two physically
-realizable flight conditions) with **released reference solutions and complete per-evaluation
-optimization histories**. Unlike synthetic suites (ZDT/DTLZ) or closed-form real-world suites (RE/MODAct),
-every objective evaluation is a live XFOIL solve, so an optimizer is tested in a genuinely
-expensive, simulation-bound regime. Every problem's evaluation budget is scaled with its dimension as
-`1024 · D`, i.e. 4096/8192/12288 evaluations at `D` = 4/8/12, over 5 seeds per optimizer — so a
-comparison at fixed budget is a comparison at fixed budget-per-dimension.
+Beyond the API, this repository doubles as **AirDbM-Bench**, a physics-in-the-loop optimization
+benchmark database: **12 frozen airfoil optimization problems** (single- and bi-objective; input
+dimension `D ∈ {4, 8, 12}`; two physically realizable flight conditions) with **released reference
+solutions and complete per-evaluation optimization histories**. Every objective evaluation is a live
+XFOIL solve rather than a closed-form surrogate, and an optimizer is therefore tested in a genuinely
+expensive, simulation-bound regime. Each budget scales with dimension as `1024 · D`, i.e.
+4096/8192/12288 evaluations at `D` = 4/8/12, over 5 seeds per optimizer.
 
-The two conditions pair Mach with Reynolds number as they actually occur, so each is a real
+The two conditions pair Mach with Reynolds number as they actually occur, and each is therefore a real
 operating point rather than a coordinate in a sweep:
 
 | condition | Ma | Re_c | physical realization |
@@ -64,37 +55,30 @@ operating point rather than a coordinate in a sweep:
 | wind-tunnel scale model | 0.20 | 1e6 | 215 mm chord at 68.1 m/s, sea level |
 | regional turboprop cruise | 0.40 | 1e7 | 1.93 m chord at 126.4 m/s at 20 000 ft (Saab 340B / ATR 42 class) |
 
-Both are subcritical and shock-free, i.e. inside the envelope where XFOIL's formulation is valid.
-Because the two differ in *both* Ma and Re_c, a difficulty difference between them reflects the
-change of operating point as a whole and should not be attributed to either variable alone.
+Both free streams are subcritical and shock-free, i.e. inside the envelope where XFOIL's formulation is
+valid. Because the two differ in *both* Ma and Re_c, any difficulty difference between them reflects the
+change of operating point as a whole.
 
 Problems are named `ADO-<O>-<C>-<N>`: `O` = objective form (`S` single / `M` multi), `C` = flow
 condition keyed by Mach (`2` = Ma 0.2, `4` = Ma 0.4), `N` = dimension index (`1` = D 4, `2` = D 8,
 `3` = D 12).
 
-Reading the released data needs no XFOIL and nothing from this repository — the histories are plain
-gzipped CSV, one file per (optimizer, seed), one row per evaluation in evaluation order:
+Reading the released data needs neither XFOIL nor anything else from this repository. The histories are
+plain gzipped CSV, one file per (optimizer, seed), one row per evaluation in evaluation order, with the
+reference fronts and per-optimizer attainment in the two summary files beside them:
 
 ~~~python
-import json, numpy as np
-
-# every evaluation NSGA-II made on ADO-M-2-1, in order
-a = np.loadtxt("bench/data/MO_D4_Re1e+06_Ma0.2/nsga2_seed0.csv.gz",
-               delimiter=",", skiprows=1)
+import numpy as np
+a = np.loadtxt("bench/data/MO_D4_Re1e+06_Ma0.2/nsga2_seed0.csv.gz", delimiter=",", skiprows=1)
 X, Y, curve = a[:, :4], a[:, 4:6], a[:, -1]   # designs, objectives, running hypervolume
-
-# the released reference front and per-optimizer attainment
-mo = json.load(open("bench/data/mo_summary.json"))["per_problem"]
-front = np.array(mo["ADO-M-2-1"]["front_Y"])
-mo["ADO-M-2-1"]["hv_ref_norm"]                # normalize your own hypervolume against this
 ~~~
 
 ### Running your own optimizer against a problem
 
-A problem is a frozen bundle of evaluation arguments plus a budget, so any optimizer that can call a
-batch function can be scored on it. Complete working example with pymoo's NSGA-II — the only
-benchmark-specific lines are `spec` (the frozen condition), `evaluate` (the XFOIL batch) and `screen`
-(the stability gate every released evaluation passed):
+A problem is a frozen bundle of evaluation arguments plus a budget; any optimizer that can call a batch
+function can therefore be scored on it. In the worked example below, the only benchmark-specific lines
+are `spec` (the frozen condition), `evaluate` (the XFOIL batch) and `screen` (the stability gate every
+released evaluation passed):
 
 ~~~python
 import sys, json
@@ -110,6 +94,7 @@ from pymoo.indicators.hv import HV
 
 s = spec("ADO-M-2-1")            # bi-objective, D = 4, Ma 0.20 / Re_c 1e6, budget 4096
 WORKERS = 32                     # XFOIL solves run in parallel
+history = []                     # every evaluation, which is what the summaries score
 
 class ADO(Problem):
     def __init__(self):
@@ -118,23 +103,27 @@ class ADO(Problem):
     def _evaluate(self, X, out, *args, **kwargs):
         Y = evaluate(X, s, max_workers=WORKERS)              # one real XFOIL solve per row
         Y, _ = screen(X, Y, s, max_workers=WORKERS)          # the suite's stability gate
-        out["F"] = -np.asarray(Y, float).reshape(-1, s["m"])  # pymoo minimizes; both objectives are maximized
+        Y = np.asarray(Y, float).reshape(-1, s["m"])
+        history.append(Y)
+        out["F"] = -Y                                        # pymoo minimizes; both objectives are maximized
 
 pop = 100
 res = minimize(ADO(), NSGA2(pop_size=pop), ("n_gen", s["budget"] // pop), seed=0, verbose=True)
-Y = -res.F                       # your front: [(Cl/Cd)_max, stall margin]
 
-# score it the way the released summaries do
+# Score every evaluation, which is what each released frac_of_reference_hv covers.
+Y = np.vstack(history)
 ref = json.load(open("bench/data/mo_summary.json"))["per_problem"]["ADO-M-2-1"]
 z = np.array(ref["front_Y"]).max(axis=0)
 score = float(HV(ref_point=np.array([0.05, 0.05]))(-(Y / z))) / ref["hv_ref_norm"]
 print(f"fraction of the reference hypervolume: {score:.3f}")
 ~~~
 
-`score` is directly comparable to the `frac_of_reference_hv` values in `mo_summary.json`, where NSGA-II
-reaches about `0.93` on this problem at the same budget. For the single-objective problems use `n_obj=1` and compare the
-best `y_cl_cd` against `y_ref` in `so_summary.json`. XFOIL must run on a compute node, not a login node,
-and a full-budget run is hours of wall time: start with a small `n_gen` to check the wiring.
+`score` is then comparable to the `frac_of_reference_hv` values in `mo_summary.json`, where NSGA-II
+reaches about `0.93` on this problem at the same budget. Note that scoring `res.F` instead measures only
+the surviving population, which matches the released quantity solely when that population still holds
+every non-dominated point the run found. For the single-objective problems use `n_obj=1` and compare the
+best `y_cl_cd` against `y_ref` in `so_summary.json`. A full-budget run takes hours, and thus it is worth
+starting with a small `n_gen` to check the wiring.
 
 See **[`bench/DATA.md`](bench/DATA.md)** for the directory layout, the column schema of both objective
 forms, the summary-file fields, and how to compare your own optimizer against the references.
@@ -149,6 +138,9 @@ forms, the summary-file fields, and how to compare your own optimizer against th
 ~~~bash
 pip install -r requirements.txt
 ~~~
+This covers the evaluator itself. Two optional extras are declared in `pyproject.toml`:
+`pip install -e ".[server]"` adds the JSON/HTTP service, and `pip install -e ".[bench]"` adds the
+optimizers (pymoo, cma, optuna, dill) that `bench/run.py` and the worked example above drive.
 
 3. Build the Apptainer image for isolated XFOIL execution:
 ~~~bash
@@ -156,26 +148,22 @@ make xfoil-apptainer-build
 ~~~
 *(Verify the container functions correctly by running `make xfoil-apptainer-check`)*
 
-By default, `TestAirfoils` uses the Apptainer backend (`xfoil_backend='apptainer'`) and the Ubuntu 22.04-based XFOIL image built from the container definition (`bin/containers/xfoil-ubuntu22.def`) in this repository. This is the recommended mode for reproducibility and consistency across systems.
-
-You may choose native XFOIL execution by setting `xfoil_backend='native'`.
+By default, `TestAirfoils` uses the Apptainer backend and the Ubuntu 22.04-based image built from
+`bin/containers/xfoil-ubuntu22.def`, which is the recommended mode for reproducibility across systems.
+Native XFOIL execution is available by setting `xfoil_backend='native'`.
 
 ## How to Use the API
 
 Import `TestAirfoils` from `airdbm_core.py` into your optimization loop or script.
 
-### Function Signature
-
 ~~~python
 TestAirfoils(x: np.ndarray, args: dict | None = None, m: int = 2) -> list
 ~~~
 
-### Parameters
-
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `x` | `np.ndarray` | Required | Candidate matrix of shape `N x D` (`N` candidates with `D` parameters); each entry is in `[0.0, 1.0]`. |
-| `args` | `dict` | `{}` | Configuration dictionary for DbM generation, parallelism, and XFOIL execution (see table below). |
+| `args` | `dict` | `{}` | Configuration dictionary for DbM generation, parallelism, and XFOIL execution (see below). |
 | `m` | `int` | `2` | Number of objectives to return when XFOIL is enabled. Supported: `1` or `2`. |
 
 ### `args` Configuration Reference
@@ -195,23 +183,25 @@ TestAirfoils(x: np.ndarray, args: dict | None = None, m: int = 2) -> list
 |---|---|---|---|
 | `xfoil_evaluation` | `bool` | `True` | If `False`, returns generated `Airfoil` objects without aerodynamic evaluation. |
 | `xfoil_backend` | `str` | `'apptainer'` | XFOIL execution backend: `'apptainer'`, `'native'`, or `'auto'`. |
+| `apptainer_image` | `str` | `'bin/xfoil-ubuntu22.sif'` | Path to the Apptainer image, used by the `'apptainer'` and `'auto'` backends. |
 | `xfoil_iter` | `int` | `200` | Max XFOIL iterations per alpha step. |
-| `xfoil_timeout` | `float` | `60.0` | Timeout (seconds) per run by default. Set `0.0` for no timeout. |
-| `xfoil_retry` | `int` | `1` | Number of XFOIL reattempts for a candidate. This helps recover transient deadlock/no-parse behavior in multiprocessing, where a design may normally converge in another attempt. |
+| `repanel_n` | `int` | `160` | Panel node count XFOIL repanels to before the scan. |
+| `xfoil_timeout` | `float` | `60.0` | Timeout (seconds) per run. Set `0.0` for no timeout. |
+| `xfoil_retry` | `int` | `1` | Number of XFOIL reattempts for a candidate, which recovers the transient no-parse behavior that can occur under multiprocessing. |
 | `xfoil_strict` | `bool` | `True` | If `True`, raise on XFOIL errors; otherwise attach errors in the result payload. |
 | `alfa_start` | `float` | `0.0` | Start angle of attack (deg) for scans. |
 | `alfa_end` | `float` | `45.0` | End angle of attack (deg) for scans. |
 | `reynolds` | `float` | `1e6` | Reynolds number for viscous analysis. |
 | `mach` | `float` | `0.0` | Mach number; `0.0` indicates a negligible-compressibility assumption. |
 | `n_crit` | `float` | `9.0` | e^N transition amplification factor. |
-| `clcd_ceiling` | `float` | `350.0` | Hard upper clip on `Cl/Cd`, applied at every Reynolds number, guarding against solver blow-ups. The benchmark objective is `min(Cl/Cd_max, 350)`. |
+| `clcd_ceiling` | `float` | `350.0` | Hard upper clip on `Cl/Cd`, guarding against solver blow-ups. The benchmark objective is `min(Cl/Cd_max, 350)`. |
 
 **MULTIPROCESSING ARGS**
 
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `parallel` | `bool` | `True` | Enables multiprocessing across candidates. |
-| `max_workers` | `int` | `os.cpu_count()` | Maximum worker processes (capped by available CPUs). |
+| `max_workers` | `int` | all available CPUs | Maximum worker processes, capped by the CPUs the process may use. |
 
 ### Return Value
 
@@ -223,12 +213,9 @@ TestAirfoils(x: np.ndarray, args: dict | None = None, m: int = 2) -> list
 | `.xfoil_result` | `dict \| None` | Raw XFOIL metrics dictionary when `xfoil_evaluation=True`; otherwise `None`. |
 | `.objectives` | `None \| float \| list[float]` | `None` if `xfoil_evaluation=False`; with evaluation enabled: `m=1 -> Cl/Cd_max`, `m=2 -> [Cl/Cd_max, delta_alpha]`. |
 
-The `.airfoil` object exposes both geometry data and helper methods, for example:
-
-- metadata: `.airfoil.name` (DbM weight inputs by default)
-- geometry arrays: `.airfoil.x_raw`, `.airfoil.y_raw`
-- access helpers: `.airfoil.get_raw_coordinates()`
-- quick visualization: `.airfoil.plot(save_path=...)`
+The `.airfoil` object exposes geometry data and helper methods: `.airfoil.name` (DbM weight inputs by
+default), the arrays `.airfoil.x_raw` and `.airfoil.y_raw`, the accessor
+`.airfoil.get_raw_coordinates()`, and `.airfoil.plot(save_path=...)` for a quick visualization.
 
 As for the objectives,
 
@@ -243,18 +230,27 @@ $$
 \Delta\alpha = \alpha_{\mathrm{stall}} - \alpha_{\left(\frac{C_l}{C_d}\right)_{\max}}
 $$
 
-Here, $\alpha_{\mathrm{stall}}$ is identified as the first local maximum of $C_l$ encountered while marching upward in angle of attack, starting from $\alpha_{\left(C_l/C_d\right)_{\max}}$ (the peak lift-to-drag angle). Because the search begins at the peak-efficiency angle, the stall margin $\Delta\alpha$ is non-negative by construction.
+Here, $\alpha_{\mathrm{stall}}$ is identified as the first local maximum of $C_l$ encountered while
+marching upward in angle of attack, starting from $\alpha_{\left(C_l/C_d\right)_{\max}}$ (the peak
+lift-to-drag angle), and falling back to the incidence of maximum $C_l$ where no local maximum is found.
+Because the search begins at the peak-efficiency angle, the stall margin $\Delta\alpha$ is non-negative
+by construction.
+
+Both incidences are located on a validity-filtered and smoothed polar, which keeps a single noisy sample
+from being reported as a peak, whereas the returned ratio is the raw value at the chosen incidence. Note
+that the `clcd_ceiling` clip is one-sided, and a section producing negative lift throughout the scan
+therefore returns a negative ratio here; the objective floor documented in `bench/DATA.md` is applied by
+the benchmark wrapper in `bench/problems.py` rather than by `TestAirfoils`.
 
 ### Verifying a design before you publish it as a reference
 
-The objective is a deterministic function of the design vector, but determinism is not stability:
-XFOIL can hold two different boundary-layer solutions for sections that are geometrically
-indistinguishable (a long laminar run versus a transitioned one), so an isolated design vector can
-score far above every design around it. Such a value is reproducible yet unreachable by search, and
-it should not define a reference optimum or a Pareto front.
+Determinism is not stability. XFOIL can hold two different boundary-layer solutions for geometrically
+indistinguishable sections (a long laminar run versus a transitioned one), and an isolated design vector
+can therefore score far above every design around it. Such a value is reproducible yet unreachable by
+search, and it should not define a reference optimum or a Pareto front.
 
-`VerifyDesigns` screens for exactly that. It perturbs each design in `n_dir` random directions at
-radius `eps` and reports whether the neighbors agree with it:
+`VerifyDesigns` screens for exactly that. By default it perturbs each design along every coordinate
+axis at radius `eps`, giving `2D` neighbors, and reports whether they agree with it:
 
 ~~~python
 import numpy as np
@@ -270,23 +266,23 @@ v = VerifyDesigns(x_best, m=2)                 # -> one verdict dict per design
 | Argument | Default | Meaning |
 |---|---|---|
 | `eps` | `1e-6` | perturbation radius in design space |
-| `directions` | `"axes"` | `"axes"` probes `x ± eps·e_i` on every coordinate, so the verdict is a function of the design vector alone; `"random"` draws `n_dir` directions per design instead |
+| `directions` | `"axes"` | `"axes"` probes `x ± eps·e_i` on every coordinate, which makes the verdict a function of the design vector alone; `"random"` draws `n_dir` directions per design instead |
 | `n_dir` | `4` | perturbed neighbors per design, used only when `directions="random"` |
 | `rel_tol` | `0.02` | relative deviation tolerated on the deciding objective |
 | `objective` | `0` | which objective decides the verdict |
-| `seed` | `0` | fixes the random directions, so a verdict is reproducible |
+| `seed` | `0` | fixes the random directions, making a verdict reproducible |
 
 Each verdict carries `robust`, the per-objective `rel_dev` and `abs_dev`, the `median_neighbor` it was
 compared against, `rel_dev_quantiles` and `frac_within_tol` for re-thresholding without re-evaluating,
-and `n_informative` — how many neighbors converged. A design is `robust` when at least two neighbors
+and `n_informative`, how many neighbors converged. A design is `robust` when at least two neighbors
 converged and the median one agrees with it to within `rel_tol` on the deciding objective.
 
-This is deliberately **not** part of `TestAirfoils`: it costs `1 + n_dir` evaluations per design, so
-running it inside the objective would multiply the cost of an optimization run. Apply it to the
-O(front size) candidate reference set at the end of a study instead, which is how the released
-reference solutions were screened. Pass the same `args` the design was optimized under: a benchmark
-condition is a whole bundle (including `dbm_normalization` and `dbm_weight_range`), not just Mach and
-Reynolds, so a partial `args` verifies a different geometry than the one you optimized.
+This is deliberately **not** part of `TestAirfoils`: at the default `directions="axes"` it costs
+`1 + 2D` evaluations per design, i.e. 9, 17 and 25 at `D` = 4, 8 and 12. Apply it to the candidate
+reference set at the end of a study, which is how the released references were screened, and pass the
+same `args` the design was optimized under; a benchmark condition is a whole bundle including
+`dbm_normalization` and `dbm_weight_range`, and a partial `args` therefore verifies a different
+geometry.
 
 ### Python Script Example
 
@@ -320,8 +316,13 @@ for i, res in enumerate(results):
 ## HTTP API server (JSON)
 
 Besides the in-process `TestAirfoils` call, the same evaluator is exposed as a JSON/HTTP service
-(FastAPI + Pydantic, with an auto-generated OpenAPI 3.1 schema), so an optimizer written in any
-language can drive it. `airdbm_core.py` is unchanged — the service only imports from it.
+(FastAPI + Pydantic, with an auto-generated OpenAPI 3.1 schema), which lets an optimizer written in any
+language drive it. `airdbm_core.py` is unchanged: the service only imports from it.
+
+**The service defaults to the benchmark's morphing convention rather than the `TestAirfoils` defaults
+above**, namely `dbm_weight_range = [0.0, 1.0]` and `dbm_normalization = 'ABS_SUM'` against the
+in-process `[-1.0, 1.0]` and `None`. The same design vector can therefore name a different airfoil
+through the two surfaces; set both keys explicitly in `args` when you need one convention across both.
 
 ~~~bash
 pip install -e ".[server]"        # installs fastapi/uvicorn/pydantic + the airdbm-serve script
@@ -340,39 +341,29 @@ airdbm-serve --host 0.0.0.0 --port 8000
 | `GET`  | `/v1/benchmark/problems/{id}` | one problem: parameters + released reference solution |
 | `POST` | `/v1/benchmark/problems/{id}/evaluate` | evaluate at a problem's frozen condition |
 
-**Argument presets.** Rather than restating Mach, Reynolds and the Cl/Cd guard on every call — and
-risking a typo that silently scores a design under the wrong condition — name the benchmark
-condition. A preset is a *base*, so anything you set explicitly in `args` still wins:
+**Argument presets.** Naming a condition avoids restating Mach, Reynolds and the Cl/Cd guard on every
+call, along with the typo that would silently score a design under the wrong condition. The presets are
+`wind_tunnel` (Ma 0.20, Re_c 1e6) and `regional_turboprop` (Ma 0.40, Re_c 1e7), and a problem id such as
+`ADO-M-2-2` resolves to its own condition. A preset is a *base*, and anything set explicitly in `args`
+therefore still wins.
 
 ~~~bash
-# by condition name
 curl -s localhost:8000/v1/evaluate -H 'content-type: application/json' -d '{
   "preset": "regional_turboprop",
   "x": [[0.8376, 0.0018, 0.6618, 0.0]],
   "m": 2
 }'
-
-# or by problem id -- resolves to that problem's condition
-curl -s localhost:8000/v1/evaluate -H 'content-type: application/json' -d '{
-  "preset": "ADO-M-2-2",
-  "x": [[0.1935, 0.0, 0.1287, 0.0, 0.0002, 0.0006, 0.8274, 0.9026]], "m": 2
-}'
 ~~~
 
-| preset | Ma | Re_c | represents |
-|---|---|---|---|
-| `wind_tunnel` | 0.20 | 1e6 | 215 mm chord at 68.1 m/s, sea level |
-| `regional_turboprop` | 0.40 | 1e7 | 1.93 m chord at 126.4 m/s at 20 000 ft (Saab 340B / ATR 42 class) |
-
 **Driving the benchmark over HTTP.** The `/v1/benchmark` endpoints expose the twelve problems and their
-released reference solutions, so an optimizer in any language can run the suite without importing
+released reference solutions, which lets an optimizer in any language run the suite without importing
 anything. They read `bench/data/manifest.json` in a repo checkout; from an installed package, point
 `AIRDBM_BENCH_MANIFEST` at that file.
 
 ~~~bash
 curl -s localhost:8000/v1/benchmark/problems | jq -r '.[].problem_id'
 curl -s localhost:8000/v1/benchmark/problems/ADO-M-2-1 \
-  | jq '{dimension, budget, history_schema, reference: (.reference | {n_front, hv_norm})}'
+  | jq '{dimension, budget, reference: (.reference | {n_front, hv_norm})}'
 
 # evaluate at a problem's frozen condition -- no need to restate Ma, Re or the guard
 curl -s localhost:8000/v1/benchmark/problems/ADO-M-2-1/evaluate \
@@ -382,12 +373,13 @@ curl -s localhost:8000/v1/benchmark/problems/ADO-M-2-1/evaluate \
 
 A minimal optimization loop is then: `GET` the problem for its dimension and budget, `POST` each
 population to the evaluate endpoint, and stop at the budget. Compare on the same quantity the summaries
-report — `frac_of_reference` for the single-objective problems, normalized hypervolume against
+report, namely `frac_of_reference` for the single-objective problems and normalized hypervolume against
 `hv_ref_norm` for the bi-objective ones.
 
-Every evaluation is a real XFOIL solve, so requests are slow by nature (order of a second per
-candidate, longer for pathological geometries). Submit a whole population in one call rather than
-one candidate per request; the response reports `n_converged` and `wall_time_s`.
+Every evaluation is a real XFOIL solve, and requests are therefore slow by nature: budget on the order of
+ten seconds of CPU time per candidate, longer for pathological geometries. Because candidates are
+evaluated concurrently, submit a whole population in one call rather than one candidate per request. The
+response reports `n_converged` and `wall_time_s`.
 
 ## Customizing Airfoil DbM
 
@@ -397,7 +389,14 @@ You can customize the AirDbM baseline set by providing your own airfoil coordina
 2. Place the files inside your airfoil database folder, such as `airfoilDB/`, or point `airfoil_db_dir` to a different folder.
 3. Explicitly define `dbm_baselines` as an ordered list of airfoil names that matches the database files you want to use.
 
-The order of `dbm_baselines` is important. The first `D` entries are used for a candidate with `D` design parameters, so the baseline ordering must match the intended morphing sequence.
+The order of `dbm_baselines` is important. The first `D` entries are used for a candidate with `D` design
+parameters, and the baseline ordering must therefore match the intended morphing sequence.
+
+Two caching details govern whether a newly added file is picked up. The parsed database is cached as
+`_db.pkl` and is not invalidated by content, and thus you should **delete `<airfoil_db_dir>/_db.pkl`
+after adding or editing a `.dat` file**, otherwise the requested baseline is reported as missing. The
+loaded set is also process-global, and a single process that reads one folder and then another keeps
+using the first.
 
 Example:
 
@@ -413,93 +412,62 @@ args = {
 }
 ~~~
 
-## Parallel Scaling Test
+## Parallel Scaling
 
-The parallel airfoil design and evaluation performance of `TestAirfoils` was measured by evaluating a fixed pool of design candidates across worker counts on a single node.
+Parallel performance was measured with `m=2` across worker counts on one 128-core dual-socket node.
+Weak scaling holds 24 candidates per worker, drawing each load as a nested prefix of one fixed design
+pool, which keeps the workload composition identical at every point. Strong scaling evaluates the same
+384 candidates throughout. Scaling is near-ideal through 32 workers and reaches about `80.9x` speedup at
+128, where per-design cost begins to rise.
 
-### Computing Environment
+<!-- SCALING:BEGIN (regenerated from the recorded scaling measurements; do not edit by hand) -->
 
-- Node type: Two 64-core AMD EPYC Milan processors @ 2.45 GHz (128 cores in total)
-- Objective mode: `m=2` (multi-objective)
-- Worker counts tested: `1` (serial), `2, 4, 8, 16, 32, 64, 128`
-
-<!-- SCALING:BEGIN (regenerated by bench/report.py; do not edit by hand) -->
-
-### Weak Scaling
-
-Design candidates per worker: `24`. Every worker count draws its load as a nested prefix of one fixed i.i.d. design pool, so the workload composition is identical at every point and the expected time is flat.
-
-| workers | candidates | time (sec) | sec/design | throughput (eval/sec) |
-|---:|---:|---:|---:|---:|
-| 1 | 24 | 311.950 | 12.998 | 0.08 |
-| 2 | 48 | 318.825 | 13.284 | 0.15 |
-| 4 | 96 | 324.722 | 13.530 | 0.30 |
-| 8 | 192 | 319.867 | 13.328 | 0.60 |
-| 16 | 384 | 313.963 | 13.082 | 1.22 |
-| 32 | 768 | 316.052 | 13.169 | 2.43 |
-| 64 | 1536 | 331.886 | 13.829 | 4.63 |
-| 128 | 3072 | 411.335 | 17.139 | 7.47 |
-
-### Strong Scaling
-
-Total design candidates: `384` (the same set at every worker count).
-
-| workers | candidates | time (sec) | speedup | efficiency |
-|---:|---:|---:|---:|---:|
-| 1 | 384 | 4921.202 | 1.00 | 1.000 |
-| 2 | 384 | 2465.182 | 2.00 | 0.998 |
-| 4 | 384 | 1240.874 | 3.97 | 0.991 |
-| 8 | 384 | 626.653 | 7.85 | 0.982 |
-| 16 | 384 | 320.502 | 15.35 | 0.960 |
-| 32 | 384 | 165.232 | 29.78 | 0.931 |
-| 64 | 384 | 91.000 | 54.08 | 0.845 |
-| 128 | 384 | 60.819 | 80.92 | 0.632 |
+| workers | weak: sec/design | weak: eval/sec | strong: time (sec) | strong: speedup | strong: efficiency |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 12.998 | 0.08 | 4921.202 | 1.00 | 1.000 |
+| 2 | 13.284 | 0.15 | 2465.182 | 2.00 | 0.998 |
+| 4 | 13.530 | 0.30 | 1240.874 | 3.97 | 0.991 |
+| 8 | 13.328 | 0.60 | 626.653 | 7.85 | 0.982 |
+| 16 | 13.082 | 1.22 | 320.502 | 15.35 | 0.960 |
+| 32 | 13.169 | 2.43 | 165.232 | 29.78 | 0.931 |
+| 64 | 13.829 | 4.63 | 91.000 | 54.08 | 0.845 |
+| 128 | 17.139 | 7.47 | 60.819 | 80.92 | 0.632 |
 <!-- SCALING:END -->
 
 ## Changelog
 
 ### v0.3.1
 
-- **`bench/score.py` now applies the stability exclusion when scoring runs, not only when building the
+- **`bench/score.py` applies the stability exclusion when scoring runs, not only when building the
   reference fronts.** The two halves of the verification previously disagreed by `1.03e-05` on
-  `ADO-M-2-2` NSGA-II, under a `5e-4` tolerance that hid it. The exclusion is keyed by operating
-  condition, so it reaches every run at `Ma 0.20` / `Re_c 1e6`, not only the `ADO-M-2-3` run it came
-  from. The verification tolerance is now `1e-9`, and all six fronts and all sixty method-problem pairs
-  reproduce with a largest disagreement of `2.22e-16`.
-- Corrected the scorer's description of the hypervolume reference point: it sits below the normalized
-  objective floor, not beyond the Pareto-front nadir, and a shared reference point does not make a
-  within-problem comparison independent of `REF_OFFSET`. `REF_OFFSET` is unchanged at `0.05` and no
+  `ADO-M-2-2` NSGA-II under a tolerance that hid it. The tolerance is now `1e-9`, and all six fronts and
+  all sixty method-problem pairs reproduce to `2.22e-16`. `REF_OFFSET` is unchanged at `0.05`, and no
   released number changes.
+- Documentation corrections, with no change to the evaluator or to any released number: the HTTP
+  service's morphing defaults are stated where they apply; the worked optimizer example scores every
+  evaluation rather than the surviving population; the `VerifyDesigns` cost is `1 + 2D` at its default
+  setting; `apptainer_image` and `repanel_n` are documented; the smoothed peak selection, the one-sided
+  `Cl/Cd` clip and the wrapper-applied objective floor are described; the airfoil-database caching rules
+  are recorded; and `bench/DATA.md` names the summary `stats` fields and their two deviation conventions.
 
 ### v0.3.0
 
-- **Released AirDbM-Bench, the optimization benchmark built on this evaluator.** Twelve frozen airfoil
-  problems (single- and bi-objective, `D ∈ {4, 8, 12}`, two flight conditions) ship with reference
-  solutions and the complete history of all 300 optimizer runs — 2.46 million XFOIL evaluations as plain
-  gzipped CSV, documented in `bench/DATA.md`.
-- **Added a JSON/HTTP service (`airdbm_service.py`)** so an optimizer in any language can drive the same
-  evaluator, with named presets for the benchmark conditions and `/v1/benchmark` endpoints serving the
-  twelve problems. Install with `pip install "airdbm[server]"` and run `airdbm-serve`.
-- **Added a stability screen deciding which values may define a reference.** XFOIL can settle on more
-  than one boundary layer solution for indistinguishable sections, so an isolated design may score far
-  above its neighbours — reproducible but unreachable by search; such candidates are perturbation-tested
-  before acceptance, also exposed as `airdbm_core.VerifyDesigns`.
-- **Reference fronts are best-known, not proven optimal.** Each is pooled over every run of a problem and
-  of every lower dimension, then improved by warm-started evaluations along the stall-margin range, so
-  attainment is reported as a fraction of the best known.
-- Documented parallel scaling on 128 cores: near-ideal through 32 workers, about `80.9x` speedup at 128.
+- **Released AirDbM-Bench**, twelve frozen problems with reference solutions and the complete history of
+  all 300 optimizer runs, i.e. 2.46 million XFOIL evaluations as gzipped CSV.
+- **Added the JSON/HTTP service** (`airdbm_service.py`), with named condition presets and `/v1/benchmark`
+  endpoints serving the twelve problems.
+- **Added the stability screen** that decides which values may define a reference, exposed as
+  `airdbm_core.VerifyDesigns`; reference fronts are best-known rather than proven optimal.
+- Documented parallel scaling on 128 cores.
 
 ### v0.2.1
 
-- **Fixed the parallel `pickle data was truncated` failure with the full 12-baseline set.** Workers could
-  read the cached airfoil database while another was still writing it; the cache is now written
-  atomically and any partial cache is rebuilt from the raw `.dat` files instead of raising.
-- **Guaranteed a non-negative stall margin (`delta_alpha`).** Non-negativity is now enforced at the
-  objective boundary as well as the computation site, and sub-degree floating-point noise snaps to `0.0`.
-- Exposed `airdbm_core.__version__` so an installed build can be identified at runtime.
+- **Fixed the parallel `pickle data was truncated` failure** with the full 12-baseline set: the airfoil
+  database cache is now written atomically, and a partial cache is rebuilt rather than raising.
+- **Guaranteed a non-negative stall margin**, enforced at the objective boundary as well as the
+  computation site, and exposed `airdbm_core.__version__`.
 
 ### v0.2.0
 
-- Baseline release: parallelized Design-by-Morphing airfoil generation with dynamic XFOIL evaluation
-  (`Cl/Cd_max` and stall-margin objectives), Apptainer/native XFOIL backends, and multiprocessing across
-  candidates.
+- Baseline release: parallelized Design-by-Morphing generation with dynamic XFOIL evaluation
+  (`Cl/Cd_max` and stall-margin objectives) and Apptainer/native backends.
