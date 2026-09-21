@@ -79,7 +79,7 @@ X, Y, curve = a[:, :D], a[:, D:D + 2], a[:, -1]   # designs, objectives, running
 Four points are worth knowing before you filter anything.
 
 **`y_cl_cd == 0` is a failure marker, whereas `y_dalpha == 0` is not.** A converged evaluation can
-legitimately return zero stall margin, meaning the airfoil reaches its lift peak at the same incidence at
+validly return zero stall margin, meaning the airfoil reaches its lift peak at the same incidence at
 which it is most efficient. There are 31,250 such rows across the bi-objective histories, against 1,662
 rows where both columns are zero. Masking on `y_dalpha == 0` therefore discards valid designs; mask on
 `y_cl_cd == 0` instead.
@@ -90,13 +90,49 @@ reconstructed and neither is imposed on you.
 
 **One run is one row short of its budget.** `SO_D4_Re1e+07_Ma0.4/cmaes_seed3.csv.gz` holds 4,095 rows
 rather than 4,096, because CMA-ES met an internal convergence criterion and stopped just below the
-allowance; the marker file beside it records this. Every other run has exactly `1024 x D` rows, and the
+allowance; the sidecar `cmaes_seed3.short.json` next to it records the count and the reason. Every other run has exactly `1024 x D` rows, and the
 released campaign therefore totals 2,457,599 rows rather than the nominal 2,457,600.
+
+**Some methods re-evaluate designs they have already seen, and the budget is charged for it.**
+The evaluator is a deterministic function of the design vector, so a repeated vector returns the values
+recorded the first time and buys no new information. The rates differ sharply by method. Across the
+released runs, MOEA/D repeats 37.5% of its 245,760 charged evaluations, from 30.8% on `ADO-M-2-1` up to
+44.0% on `ADO-M-2-3`; particle swarm repeats 1.6%, differential evolution 0.03%, and CMA-ES, the genetic
+algorithm, NSGA-II, SMS-EMOA, Optuna TPE and Sobol repeat none. The reason is configuration, not a data
+fault: the genetic and NSGA-II runs enable pymoo's duplicate elimination and the MOEA/D run does not.
+Read the MOEA/D curves with that in mind, since they cover fewer distinct designs than their budget
+implies. Pooling the runs of each problem, 104,593 of the 2,457,599 rows repeat a design vector that appeared
+earlier, and every one of them returns the objective values of its first appearance.
+
+**Methods that share a population size share their seeded initial sample.** At a given seed, MOEA/D and
+NSGA-II open on the same 100 designs, and differential evolution and the genetic algorithm on the same
+40, 80 or 100 designs at `D = 4, 8, 12`. This follows from seeding one sampler and is why those runs
+overlap at the start.
 
 **The design spaces are nested and ray-invariant.** A `D=4` vector is a valid `D=8` vector once padded
 with zeros, and evaluates bit-identically. The map from vector to weights is invariant along rays through
 the origin, which leaves the effective dimension at `D-1` and allows distinct vectors to return identical
 objectives.
+
+## Where the baseline geometries come from
+
+The twelve DbM baselines in `airfoilDB/` are taken from the UIUC Airfoil Coordinates Database
+(<https://m-selig.ae.illinois.edu/ads/coord_database.html>). They are plain text in the Selig
+convention that XFOIL reads: a name line, then one `x y` pair per line tracing a single contour from the
+trailing edge along the upper surface to the leading edge and back along the lower surface. Line endings
+are CRLF and numeric precision varies between files, both inherited from the source.
+
+Six files are the UIUC originals with no change at all: `e195.dat`, `fx79w660a.dat`,
+`griffith30SymSuction.dat`, `s9104.dat`, `ah93w480b.dat`, `ah81k144wfKlappe.dat`. (`s9104.dat` has a
+`# Airfoil by Michael Selig / CC BY 4.0` line and eighteen-decimal coordinates because the UIUC file
+does.)
+
+UIUC publishes the other six in the two-surface Lednicer layout, which opens with a point count line and
+then lists each surface outward from the leading edge. XFOIL wants one contour, so `goe531.dat`,
+`e864.dat`, `r1145msm.dat`, `chen.dat`, `e664ex.dat` and `saratov.dat` were rewritten in Selig order:
+reverse the upper block, join the two, drop the leading-edge point that the source lists twice. No
+coordinate value was altered and no point was added, removed or resampled, so undoing the ordering
+returns the source coordinates. This is the only preparation applied to any input geometry.
 
 ## Summaries
 
@@ -133,7 +169,7 @@ the per-level `_trace*` sweeps) alongside `_trace.grid.json`, which records the 
 provenance. `mo_summary.json` labels the origin of every front point in `front_src`, where `_refstage`
 marks a point contributed by this stage and `_nested` one inherited from a lower dimension.
 
-The share is large and worth stating plainly: on four of the six problems the reference stage supplies
+The share is large and we state it: on four of the six problems the reference stage supplies
 91 to 97 per cent of the published front. **These evaluations are pooled into the reference only.** They
 never enter a per-method statistic, because the refiner is not one of the compared optimizers; it is part
 of how the target is built.
@@ -148,7 +184,7 @@ histories themselves are untouched, which leaves the screen a view you can apply
 `bench/score.py` applies it, which is why its rederived fronts match the published ones exactly.
 
 If you reimplement the in-loop gate, load `gate.json` rather than `mo_summary.json`. For the
-single-objective problems the two agree; the gate's bi-objective fronts deliberately freeze the panel pool
+single-objective problems the two agree; the gate's bi-objective fronts intentionally freeze the panel pool
 as it stood *before* the reference stage, and are the weaker of the two sets. Gating against the published
 front instead would arm far more rarely and would tie the problem definition to a target that later search
 can still improve.
@@ -170,6 +206,9 @@ the API:
 ```
 python bench/score.py
 ```
+
+On the released files every one of the sixty fractions agrees with the published value to within
+2.2e-16, which is at the level of floating-point rounding.
 
 Import it to score your own optimizer on the same footing:
 
