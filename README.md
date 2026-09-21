@@ -1,6 +1,6 @@
 # AirDbM-API-Bench
 
-> <kbd> Aug 5, 2026 </kbd> <br> This is the native-Python **API** and **benchmark** release of the AirDbM design and evaluation scheme, reprocessed from the parent [AirDbM](https://github.com/UCBCFD/AirDbM) repository (the MATLAB implementation accompanying the article that introduced the compact 12-baseline Design-by-Morphing set) and adapted into a standalone Python workflow for robust batch evaluation.
+> <kbd> Aug 5, 2026 </kbd> <br> This is the native-Python **API** and **benchmark** release of the AirDbM design and evaluation scheme, reprocessed from the parent [AirDbM](https://github.com/UCBCFD/AirDbM) repository (the MATLAB implementation accompanying the article that introduced the compact 12-baseline Design-by-Morphing set) and adapted into a standalone Python workflow for reliable batch evaluation.
 
 <div align="center">
   <kbd>
@@ -19,7 +19,7 @@ cl_cd_max, _ = results[0].objectives
 print(f"Cl/Cd max: {cl_cd_max:.2f}") # >>>>>>> Cl/Cd max: 54.98
 ~~~
 
-This repository provides a robust, parallelized Python interface for generating morphed airfoil
+This repository provides a parallelized Python interface for generating morphed airfoil
 geometries using Design-by-Morphing (DbM) and evaluating them dynamically via XFOIL. Two modules
 carry the interface, and the benchmark ships alongside them in `bench/`:
 
@@ -43,7 +43,7 @@ Beyond the API, this repository doubles as **AirDbM-Bench**, a physics-in-the-lo
 benchmark database: **12 frozen airfoil optimization problems** (single- and bi-objective; input
 dimension `D ∈ {4, 8, 12}`; two physically realizable flight conditions) with **released reference
 solutions and complete per-evaluation optimization histories**. Every objective evaluation is a live
-XFOIL solve rather than a closed-form surrogate, and an optimizer is therefore tested in a genuinely
+XFOIL solve rather than a closed-form surrogate, and an optimizer is therefore tested in a truly
 expensive, simulation-bound regime. Each budget scales with dimension as `1024 · D`, i.e.
 4096/8192/12288 evaluations at `D` = 4/8/12, over 5 seeds per optimizer.
 
@@ -120,7 +120,7 @@ print(f"fraction of the reference hypervolume: {score:.3f}")
 
 `score` is then comparable to the `frac_of_reference_hv` values in `mo_summary.json`, where NSGA-II
 reaches about `0.93` on this problem at the same budget. Note that scoring `res.F` instead measures only
-the surviving population, which matches the released quantity solely when that population still holds
+the population that remains, which matches the released quantity solely when that population still holds
 every non-dominated point the run found. For the single-objective problems use `n_obj=1` and compare the
 best `y_cl_cd` against `y_ref` in `so_summary.json`. A full-budget run takes hours, and thus it is worth
 starting with a small `n_gen` to check the wiring.
@@ -245,7 +245,7 @@ the benchmark wrapper in `bench/problems.py` rather than by `TestAirfoils`.
 ### Verifying a design before you publish it as a reference
 
 Determinism is not stability. XFOIL can hold two different boundary-layer solutions for geometrically
-indistinguishable sections (a long laminar run versus a transitioned one), and an isolated design vector
+near-identical sections (a long laminar run versus a transitioned one), and an isolated design vector
 can therefore score far above every design around it. Such a value is reproducible yet unreachable by
 search, and it should not define a reference optimum or a Pareto front.
 
@@ -277,7 +277,7 @@ compared against, `rel_dev_quantiles` and `frac_within_tol` for re-thresholding 
 and `n_informative`, how many neighbors converged. A design is `robust` when at least two neighbors
 converged and the median one agrees with it to within `rel_tol` on the deciding objective.
 
-This is deliberately **not** part of `TestAirfoils`: at the default `directions="axes"` it costs
+This is intentionally **not** part of `TestAirfoils`: at the default `directions="axes"` it costs
 `1 + 2D` evaluations per design, i.e. 9, 17 and 25 at `D` = 4, 8 and 12. Apply it to the candidate
 reference set at the end of a study, which is how the released references were screened, and pass the
 same `args` the design was optimized under; a benchmark condition is a whole bundle including
