@@ -1,5 +1,5 @@
 {
- "derived_from": "Canonical-axes stability screen (directions=axes) of the panel-pooled reference solutions at the end of the released campaign. For m=1 this equals the published so_summary.json reference. For m=2 it is deliberately NOT the published mo_summary.json front: it freezes the panel pool BEFORE the reference-front refinement stage, and is the weaker of the two sets.",
+ "derived_from": "Canonical-axes stability screen (directions=axes) of the panel-pooled reference solutions at the end of the released campaign. For m=1 this equals the published so_summary.json reference. For m=2 it is intentionally NOT the published mo_summary.json front: it freezes the panel pool BEFORE the reference-front refinement stage, and is the weaker of the two sets.",
  "rule": "Probe a candidate for stability when the frozen set below does not dominate it: for m=1 when y > best, for m=2 when no front point dominates (y1, y2). These sets are FROZEN constants, so a verdict depends only on the design vector -- not on what a run has already seen, nor on later regenerations of the released summaries. Load THIS file to reproduce screen(); loading mo_summary.json instead gives a materially rarer arming condition.",
  "so_best": {
   "ADO-S-2-1": 171.8466898955,

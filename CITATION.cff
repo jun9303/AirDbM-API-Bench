@@ -1,0 +1,68 @@
+cff-version: 1.2.0
+message: >-
+  If this repository contributes to your research, publication or benchmark,
+  please cite the AirDbM references below.
+title: "AirDbM-API-Bench"
+abstract: >-
+  Python and HTTP API for AirDbM airfoil design by morphing, together with
+  AirDbM-Bench: twelve frozen single- and multi-objective optimization problems
+  evaluated by a live XFOIL solve, their released reference solutions, and the
+  per-evaluation histories of 300 optimizer runs.
+type: software
+authors:
+  - family-names: Lee
+    given-names: Sangjoon
+    affiliation: >-
+      School of Mechanical and Aerospace Engineering, Nanyang Technological
+      University, Singapore
+  - family-names: Sheikh
+    given-names: Haris Moazam
+    affiliation: >-
+      Department of Aeronautical and Astronautical Engineering, University of
+      Southampton, United Kingdom
+version: "0.3.1"
+date-released: "2026-08-19"
+license: BSD-3-Clause
+repository-code: "https://github.com/jun9303/AirDbM-API-Bench"
+keywords:
+  - benchmark
+  - black-box optimization
+  - multi-objective optimization
+  - design by morphing
+  - airfoil design
+preferred-citation:
+  type: article
+  title: >-
+    Airfoil Optimization using Design-by-Morphing with Minimized Design-Space
+    Dimensionality
+  authors:
+    - family-names: Lee
+      given-names: Sangjoon
+    - family-names: Sheikh
+      given-names: Haris Moazam
+  journal: "Journal of Computational Design and Engineering"
+  year: 2026
+  volume: 13
+  issue: 1
+  start: 108
+  end: 124
+  doi: "10.1093/jcde/qwaf124"
+references:
+  - type: article
+    title: "Airfoil Optimization using Design-by-Morphing"
+    authors:
+      - family-names: Sheikh
+        given-names: Haris Moazam
+      - family-names: Lee
+        given-names: Sangjoon
+      - family-names: Wang
+        given-names: Jinge
+      - family-names: Marcus
+        given-names: Philip S.
+    journal: "Journal of Computational Design and Engineering"
+    year: 2023
+    volume: 10
+    issue: 4
+    start: 1443
+    end: 1459
+    doi: "10.1093/jcde/qwad059"
