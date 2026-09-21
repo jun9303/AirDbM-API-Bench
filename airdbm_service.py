@@ -64,7 +64,7 @@ MAX_DIMENSION = len(EXPECTED_BASELINES)
 def clcd_ceiling_for(reynolds: float) -> float:
     """Hard ceiling on (Cl/Cd)_max: 350 at every Reynolds number, matching
     airdbm_bench_so.clcd_ceiling_for. Part of the objective definition."""
-    del reynolds  # deliberately Reynolds-independent
+    del reynolds  # intentionally Reynolds-independent
     return 350.0
 
 
@@ -75,7 +75,7 @@ def clcd_ceiling_for(reynolds: float) -> float:
 # reproduce a benchmark condition exactly without restating Mach, Reynolds and the Cl/Cd guard --
 # and without risking a typo that silently scores a design under the wrong condition.
 # CONDITION_PRESETS are the two flight conditions of the AirDbM-Bench (ADO) suite. They are the
-# single source of truth in this module and are deliberately duplicated from the benchmark
+# single source of truth in this module and are duplicated on purpose from the benchmark
 # definition rather than imported, so the server also works in an installed wheel that does not
 # ship the benchmark directory.
 
@@ -428,7 +428,7 @@ def _pack(results: list[Any], m: int, want_geometry: bool, want_polar: bool) -> 
     return packed
 
 
-# NOTE: these handlers are deliberately def, not async def. XFOIL evaluation is blocking and
+# NOTE: these handlers are intentionally def, not async def. XFOIL evaluation is blocking and
 # CPU-bound; Starlette runs sync handlers in a worker thread, so one slow request cannot stall
 # the event loop and starve the health probe.
 

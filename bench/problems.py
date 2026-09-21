@@ -37,7 +37,7 @@ MIN_W = 1e-6
 #
 # WHICH SET. The screening set lives in gate.json and is NOT the reference published in
 # mo_summary.json. For m=1 the two coincide: gate.json's so_best equals so_summary.json's y_ref on all
-# six problems. For m=2 they deliberately differ. gate.json's mo_front freezes the end-of-study screen
+# six problems. For m=2 they differ by design. gate.json's mo_front freezes the end-of-study screen
 # of the panel pool, taken BEFORE the reference-front refinement stage, and it is therefore the weaker
 # of the two: 42 points reaching Cl/Cd 269.30 on ADO-M-4-2, against 89 points reaching 272.47 on the
 # published front. Gating against the published front instead would arm far more rarely and would make
@@ -105,11 +105,11 @@ def history_files(d):
     """The finished evaluation histories in a problem directory, in a stable order.
 
     Every consumer of the released data must agree on what counts as a history, so the rule lives
-    here rather than in each script. Two things are excluded deliberately:
+    here rather than in each script. Two things are excluded on purpose:
 
       * `<run>.partial.csv`, the append-only log run.py writes while a run is in flight. It carries a
         different column layout (no derived best-so-far or hypervolume column), so a loose glob does
-        not merely add unfinished data -- it misparses the columns it does read.
+        not just add unfinished data -- it misparses the columns it does read.
       * a superseded copy of a run. A re-run writes `<run>.csv` while the released version is still
         `<run>.csv.gz`; loading both would count one run twice and bias the pooled reference toward
         whichever copy happens to be better. That is an error, not something to resolve silently.

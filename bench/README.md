@@ -73,15 +73,15 @@ and 2 for the steady-state SMS-EMOA and MOEA/D, which evaluate one candidate at 
 the longest.
 
 `run.py` appends every evaluation to `<method>_seed<k>.partial.csv` as it goes, and thus an interrupted run
-still leaves a usable history; the partial is removed once the final file is written. It refuses to replace
+still leaves a usable history; the partial is removed once the final file is written. It will not replace
 an existing history with a shorter one. Use `--seed 99` to smoke-test, or `--force` to overwrite
-deliberately. Re-invoking with `--budget` equal to what a partial log already holds finalizes it on the
+on purpose. Re-invoking with `--budget` equal to what a partial log already holds finalizes it on the
 spot, touching no solver.
 
 ## Stability of a solution
 
 XFOIL can settle on more than one boundary layer solution for two sections that are geometrically
-indistinguishable, and an isolated design vector can therefore score far above every design around it. The
+near-identical, and an isolated design vector can therefore score far above every design around it. The
 value is reproducible yet unattainable by search, and it is an artifact of the model rather than a property
 of the shape. Two mechanisms rule such values out, and both are part of the problem definition.
 
@@ -100,7 +100,7 @@ how the set was built.
 
 **End-of-study screen**, kept because it is what a study with no published front to gate against can do.
 It perturbation-tests every candidate reference solution and scores at the floor any design whose
-neighbours at radius `1e-6` disagree with it by more than 2% in an objective. At the default
+neighbors at radius `1e-6` differ from it by more than 2% in an objective. At the default
 canonical-axes setting the check costs `1 + 2D` evaluations per candidate, i.e. 9, 17 and 25 at
 `D` = 4, 8 and 12, and it applies only to the reference set; it therefore adds a fraction of a percent to
 a campaign and nothing to an optimization run. The same check is available from the interface as

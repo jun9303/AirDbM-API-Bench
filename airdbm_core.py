@@ -365,7 +365,7 @@ cmd: list[str],
         # timeout is measured in wall-clock time, whether that truncation happens depends on how
         # loaded the machine is. That made the same design score differently between runs (a
         # near-separation point could land on a branch with a strongly under-predicted Cd, which is
-        # below the continuity filter's threshold and so survived it). XFOIL itself is
+        # below the continuity filter's threshold and so passed it). XFOIL itself is
         # deterministic; accepting a truncated polar is what made the pipeline nondeterministic.
         # A stage that did not run to completion therefore contributes NOTHING: the caller keeps
         # the coarse points if a refined pass times out, and an incomplete coarse scan yields an
@@ -390,7 +390,7 @@ def _parse_xfoil_polar(polar_file: str) -> tuple[np.ndarray, np.ndarray, np.ndar
     Columns 6-7 are the chordwise transition locations on the upper and lower surfaces. They carry
     no weight in the objective, but they say which boundary layer solution XFOIL settled on: a value
     at (or very near) 1.0 means the surface stayed laminar to the trailing edge. Two geometrically
-    indistinguishable sections can differ here, which is what makes an isolated optimum possible, so
+    near-identical sections can differ here, which is what makes an isolated optimum possible, so
     the benchmark records them. A polar written by an older build without these columns yields NaN
     rather than dropping the row.
     """
@@ -521,7 +521,7 @@ def _compute_polar_metrics(
     # Note: Peak selection is intentionally based on the smoothed lift-to-drag curve to avoid
     # reporting a narrow raw-sample spike from noisy marching behavior.
     #
-    # Both peak searches must see ONLY points that survived the validity mask (drag floor and
+    # Both peak searches must see ONLY points that passed the validity mask (drag floor and
     # continuity filter). cl_cd is NaN at invalid points, so nanargmax already skips them; but
     # cl_smooth keeps the RAW value wherever smoothing was not applied, so a plain argmax over it
     # could select a point the mask had rejected. That fed cl_max, alpha_at_cl_max and the stall
@@ -744,7 +744,7 @@ def run_xfoil_evaluation(airfoil: 'Airfoil', xfoil_config: dict, m: int = 1) -> 
             #
             # At an incidence both passes evaluated, the same airfoil at the same Re and Mach must
             # give the same drag unless the two are on different branches. So compare them there:
-            # if they disagree beyond CD_BRANCH_TOL, the refined window is off-branch and is
+            # if they differ beyond CD_BRANCH_TOL, the refined window is off-branch and is
             # DISCARDED, leaving the coarse points -- which are the branch continued from
             # alpha_start, and therefore authoritative -- in place.
             coarse_at = {round(float(a), 6): float(c) for a, c in zip(alpha_c, cd_c) if c > 0}
@@ -834,7 +834,7 @@ def run_xfoil_evaluation(airfoil: 'Airfoil', xfoil_config: dict, m: int = 1) -> 
         # Nonzero means the PPAR paneling command failed and the PANE fallback was used, so the
         # requested repanel_n was NOT applied and that stage cost two XFOIL launches.
         metrics['ppar_fallbacks'] = int(scan_diag.get('ppar_fallbacks', 0))
-        # Refined windows discarded because they disagreed with the coarse branch at a shared
+        # Refined windows discarded because they differed from the coarse branch at a shared
         # incidence (the refined session had settled on a different boundary-layer solution).
         metrics['branch_mismatches'] = int(scan_diag.get('branch_mismatches', 0))
         # Stages where XFOIL aborted (typically SIGFPE deep in the post-stall march). The rows it
@@ -981,7 +981,7 @@ def _load_cached_db(pickle_file_path: str) -> list['Airfoil'] | None:
     Under multiprocessing, a pickle can be observed while another worker (or a
     packaged-data copy step) is still writing it, yielding a partially written
     file. Reading such a file raises 'pickle data was truncated' / EOFError.
-    Treating any unreadable pickle as a cache miss keeps parallel runs robust.
+    Treating any unreadable pickle as a cache miss keeps parallel runs safe.
     """
     if not os.path.exists(pickle_file_path):
         return None
@@ -1527,13 +1527,13 @@ def VerifyDesigns(
 
     An objective returned by this interface is a deterministic function of the design vector, but
     determinism is not stability: XFOIL can hold two different boundary-layer solutions for
-    geometrically indistinguishable sections (a long laminar run versus a transitioned one), so an
+    geometrically near-identical sections (a long laminar run versus a transitioned one), so an
     isolated design vector can score far above every neighbor. Such a point is reproducible yet
     unreachable by search, and it has no business defining a reference optimum or a Pareto front.
 
     The verdict compares the design against the MEDIAN of its neighbors, not against the worst of
     them. A design sitting on a ridge has one direction that falls away and the rest that agree; a
-    design that is genuinely isolated has a neighborhood that agrees with itself and not with the
+    design that is truly isolated has a neighborhood that agrees with itself and not with the
     design. Only the second should be rejected, and only the median separates the two.
 
     The verdict is taken on ONE objective (default the first). Objectives differ in how sharply the
@@ -1542,7 +1542,7 @@ def VerifyDesigns(
     such an objective into a pass/fail rule rejects the extremes an optimizer is supposed to find.
     Deviations for every objective are reported either way, so a caller can characterize the rest.
 
-    This check is deliberately NOT part of TestAirfoils: at the default directions='axes' it costs
+    This check is intentionally NOT part of TestAirfoils: at the default directions='axes' it costs
     (1 + 2D) evaluations per design, and (1 + n_dir) under directions='random', so running it inside
     the objective would multiply the cost of an optimization run.
     It is meant for the O(front size) candidate reference set at the END of a study -- a fraction
@@ -1560,7 +1560,7 @@ def VerifyDesigns(
           2D neighbors with no random choice in it, so a verdict carries no seed. 'random' draws n_dir
           directions instead, seeded per design. Measured on the designs this benchmark rejected, a
           random draw of 4 or 8 directions gives a verdict that flips between draws for 6 of 11
-          borderline designs -- the neighborhood is genuinely heterogeneous, and no amount of sampling
+          borderline designs -- the neighborhood is truly heterogeneous, and no amount of sampling
           removes the arbitrariness -- which is why the canonical set is the default.
         - seed: fixes the directions when directions='random'; unused for 'axes'.
 
