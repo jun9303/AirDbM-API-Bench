@@ -26,6 +26,8 @@ definitions, the runner, the scorer, the frozen gate constant and the data.
 Five per objective form. Every setting is the value its primary source specifies; where the implementing
 library's default differs, the source wins. None of the seven population methods is implemented here:
 they are run through pymoo, while Sobol comes from SciPy's QMC module and TPE from Optuna.
+The released campaign used pymoo 0.6.2, Optuna 4.9.0 and cma 4.4.4 on Python 3.10.12, alongside
+the NumPy, SciPy and Shapely versions pinned in `requirements.txt`.
 
 | method | key settings | source |
 |---|---|---|
