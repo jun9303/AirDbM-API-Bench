@@ -15,7 +15,7 @@ from problems import (DATA, MO_METHODS, SO_METHODS, SMOKE_SEED, budget_for, eval
 BATCH = 32
 # Population override for reference-building runs. The released panel runs at the published
 # defaults (POP["n"] = 0); a reference run sets it, because front density is capped by the size of
-# the surviving population, not by the budget: pooling thirty gated runs at pop 100 yields a front
+# the population that remains, not by the budget: pooling thirty gated runs at pop 100 yields a front
 # of 36-78 points, no larger than the best single run.
 POP = {"n": 0}
 # Early termination for reference-building runs. The panel is compared at a fixed budget, so it must
@@ -130,7 +130,7 @@ def _converged(s):
         return False
     # The floor is a decimal constant serialized into gate.json, so a run that rediscovers the
     # reference optimum exactly still lands a few parts in 1e11 below the stored value. A strict
-    # comparison would make the floor unreachable precisely in the case it is meant to admit -- a run
+    # comparison would make the floor unreachable in the one case it is meant to admit -- a run
     # that has matched the reference -- so it is applied with a relative tolerance well inside the
     # constant's twelve significant digits.
     if v < STOP["floor"] - FLOOR_RTOL * abs(STOP["floor"]):
@@ -315,7 +315,7 @@ def save(s, method, seed, X, Y, budget, force):
     if target.exists() and not force:
         n = sum(1 for _ in open(target)) - 1
         if n > len(Y):
-            raise SystemExit(f"{target} has {n} rows; refusing to replace with {len(Y)}. "
+            raise SystemExit(f"{target} has {n} rows; declining to replace with {len(Y)}. "
                              f"Use --seed {SMOKE_SEED} to smoke-test or --force to overwrite.")
     if s["m"] == 1:
         y = Y[:, 0]
@@ -425,14 +425,14 @@ def main():
         # The optimizer returned normally below its allowance, i.e. its own termination criteria
         # fired (the budget is an allowance, not a mandate). Resuming cannot add evaluations, so the
         # run is final: record why and retire the transient state instead of leaving the run to be
-        # resubmitted forever. A convergence stop is a deliberate outcome rather than a shortfall,
+        # resubmitted forever. A convergence stop is an intended outcome and not a shortfall,
         # so it is recorded as such -- resume.sh reads this file and must not restart it.
         out["self_terminated"] = True
         rec = {"n_eval": out["n_eval"], "budget": budget, "shortfall": out["budget_shortfall"]}
         if STOP["reason"]:
             out["converged"] = STOP["reason"]
             rec.update(converged=STOP["reason"], hv_curve=STOP["curve"])
-        (DATA / s["tag"] / f"{name}_seed{a.seed}.short").write_text(json.dumps(rec) + "\n")
+        (DATA / s["tag"] / f"{name}_seed{a.seed}.short.json").write_text(json.dumps(rec) + "\n")
         PARTIAL["path"].unlink(missing_ok=True)
         if CKPT["path"] is not None:
             CKPT["path"].unlink(missing_ok=True)
