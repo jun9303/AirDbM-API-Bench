@@ -20,8 +20,8 @@ authors:
     affiliation: >-
       Department of Aeronautical and Astronautical Engineering, University of
       Southampton, United Kingdom
-version: "0.3.1"
-date-released: "2026-08-19"
+version: "0.3.2"
+date-released: "2026-09-22"
 license: BSD-3-Clause
 repository-code: "https://github.com/jun9303/AirDbM-API-Bench"
 keywords:
