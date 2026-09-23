@@ -22,6 +22,7 @@ authors:
       Southampton, United Kingdom
 version: "0.3.2"
 date-released: "2026-09-22"
+doi: "10.5281/zenodo.22908507"
 license: BSD-3-Clause
 repository-code: "https://github.com/jun9303/AirDbM-API-Bench"
 keywords:
