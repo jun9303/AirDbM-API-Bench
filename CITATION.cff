@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: >-
   If this repository contributes to your research, publication or benchmark,
-  please cite the AirDbM references below.
+  please cite it as below.
 title: "AirDbM-API-Bench"
 abstract: >-
   Python and HTTP API for AirDbM airfoil design by morphing, together with
@@ -31,23 +31,6 @@ keywords:
   - multi-objective optimization
   - design by morphing
   - airfoil design
-preferred-citation:
-  type: article
-  title: >-
-    Airfoil Optimization using Design-by-Morphing with Minimized Design-Space
-    Dimensionality
-  authors:
-    - family-names: Lee
-      given-names: Sangjoon
-    - family-names: Sheikh
-      given-names: Haris Moazam
-  journal: "Journal of Computational Design and Engineering"
-  year: 2026
-  volume: 13
-  issue: 1
-  start: 108
-  end: 124
-  doi: "10.1093/jcde/qwaf124"
 references:
   - type: article
     title: "Airfoil Optimization using Design-by-Morphing"
